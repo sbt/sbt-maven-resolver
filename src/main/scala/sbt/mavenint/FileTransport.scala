@@ -15,7 +15,8 @@ class FileTransport(repository: RemoteRepository) extends AbstractTransporter {
   private def toURL(task: TransportTask): java.net.URL =
     try new java.net.URL(s"${repository.getUrl}/${task.getLocation.toASCIIString}")
     catch {
-      case e: IllegalArgumentException => throw new IllegalArgumentException(s" URL (${task.getLocation}) is not absolute.")
+      case e: IllegalArgumentException =>
+        throw new IllegalArgumentException(s" URL (${task.getLocation}) is not absolute.")
     }
   private def toResource(task: TransportTask): Resource = new URLResource(toURL(task))
   private def toFile(task: TransportTask): java.io.File =

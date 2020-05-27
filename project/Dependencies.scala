@@ -17,7 +17,6 @@ object Dependencies {
   lazy val deps: Seq[ModuleID] = Seq(
     "org.scala-sbt" %% "librarymanagement-core" % libraryManagementVersion,
     "org.scala-sbt" %% "librarymanagement-ivy" % libraryManagementVersion,
-
     "org.apache.maven" % "maven-aether-provider" % mvnVersion,
     "org.eclipse.aether" % "aether" % aetherVersion,
     "org.eclipse.aether" % "aether-impl" % aetherVersion,
@@ -26,8 +25,7 @@ object Dependencies {
     "org.eclipse.aether" % "aether-transport-wagon" % aetherVersion,
     "org.eclipse.aether" % "aether-transport-http" % aetherVersion,
     "org.eclipse.aether" % "aether-connector-basic" % aetherVersion,
-
-    "org.eclipse.sisu" % "org.eclipse.sisu.plexus" % "0.3.4" excludeAll(
+    "org.eclipse.sisu" % "org.eclipse.sisu.plexus" % "0.3.4" excludeAll (
       ExclusionRule("javax.enterprise", "cdi-api"),
       ExclusionRule("com.google.code.findbugs", "jsr305")
     ),

@@ -26,7 +26,8 @@ import scala.collection.JavaConverters._
  *
  */
 class MavenRemoteRepositoryResolver(val repo: MavenRepository, settings: IvySettings)
-    extends MavenRepositoryResolver(settings) with CustomRemoteMavenResolver {
+    extends MavenRepositoryResolver(settings)
+    with CustomRemoteMavenResolver {
   setName(repo.name)
   override def toString = s"${repo.name}: ${repo.root}"
   protected val system = MavenRepositorySystemFactory.newRepositorySystemImpl
@@ -37,11 +38,19 @@ class MavenRemoteRepositoryResolver(val repo: MavenRepository, settings: IvySett
   sbt.io.IO.createDirectory(localRepo)
   protected val session = MavenRepositorySystemFactory.newSessionImpl(system, localRepo)
   private val aetherRepository = {
-    new org.eclipse.aether.repository.RemoteRepository.Builder(repo.name, SbtRepositoryLayout.LAYOUT_NAME, repo.root).build()
+    new org.eclipse.aether.repository.RemoteRepository.Builder(
+      repo.name,
+      SbtRepositoryLayout.LAYOUT_NAME,
+      repo.root
+    ).build()
   }
   // TODO - Check if isUseCacheOnly is used correctly.
   private def isUseCacheOnly: Boolean =
-    Option(IvyContext.getContext).flatMap(x => Option(x.getResolveData)).flatMap(x => Option(x.getOptions)).map(_.isUseCacheOnly).getOrElse(false)
+    Option(IvyContext.getContext)
+      .flatMap(x => Option(x.getResolveData))
+      .flatMap(x => Option(x.getOptions))
+      .map(_.isUseCacheOnly)
+      .getOrElse(false)
   protected def addRepositories(request: AetherDescriptorRequest): AetherDescriptorRequest =
     if (isUseCacheOnly) request else request.addRepository(aetherRepository)
   protected def addRepositories(request: AetherArtifactRequest): AetherArtifactRequest =
@@ -66,10 +75,15 @@ class MavenRemoteRepositoryResolver(val repo: MavenRepository, settings: IvySett
         mrid.getName,
         mrid.getRevision,
         MavenRepositoryResolver.MAVEN_METADATA_XML,
-        Metadata.Nature.RELEASE_OR_SNAPSHOT))
+        Metadata.Nature.RELEASE_OR_SNAPSHOT
+      )
+    )
     if (!isUseCacheOnly) metadataRequest.setRepository(aetherRepository)
     val metadataResultOpt =
-      try system.resolveMetadata(session, java.util.Arrays.asList(metadataRequest)).asScala.headOption
+      try system
+        .resolveMetadata(session, java.util.Arrays.asList(metadataRequest))
+        .asScala
+        .headOption
       catch {
         case e: org.eclipse.aether.resolution.ArtifactResolutionException => None
       }

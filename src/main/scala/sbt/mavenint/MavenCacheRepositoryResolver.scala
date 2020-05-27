@@ -3,14 +3,19 @@ package mavenint
 
 import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.ivy.core.settings.IvySettings
-import org.eclipse.aether.artifact.{DefaultArtifact => AetherArtifact}
-import org.eclipse.aether.installation.{InstallRequest => AetherInstallRequest}
-import org.eclipse.aether.metadata.{DefaultMetadata, Metadata}
-import org.eclipse.aether.resolution.{ArtifactDescriptorRequest => AetherDescriptorRequest, ArtifactRequest => AetherArtifactRequest, MetadataRequest => AetherMetadataRequest, VersionRangeRequest => AetherVersionRangeRequest, VersionRequest => AetherVersionRequest}
+import org.eclipse.aether.artifact.{ DefaultArtifact => AetherArtifact }
+import org.eclipse.aether.installation.{ InstallRequest => AetherInstallRequest }
+import org.eclipse.aether.metadata.{ DefaultMetadata, Metadata }
+import org.eclipse.aether.resolution.{
+  ArtifactDescriptorRequest => AetherDescriptorRequest,
+  ArtifactRequest => AetherArtifactRequest,
+  MetadataRequest => AetherMetadataRequest,
+  VersionRangeRequest => AetherVersionRangeRequest,
+  VersionRequest => AetherVersionRequest
+}
 import sbt.internal.librarymanagement.ivyint.CustomMavenResolver
 
 import scala.collection.JavaConverters._
-
 
 /**
  * A resolver instance which can resolve from a maven CACHE.
@@ -18,7 +23,8 @@ import scala.collection.JavaConverters._
  * Note: This should never hit somethign remote, as it just looks in the maven cache for things already resolved.
  */
 class MavenCacheRepositoryResolver(val repo: MavenCache, settings: IvySettings)
-    extends MavenRepositoryResolver(settings) with CustomMavenResolver {
+    extends MavenRepositoryResolver(settings)
+    with CustomMavenResolver {
   setName(repo.name)
   protected val system = MavenRepositorySystemFactory.newRepositorySystemImpl
   IO.createDirectory(repo.rootFile)
@@ -27,7 +33,8 @@ class MavenCacheRepositoryResolver(val repo: MavenCache, settings: IvySettings)
   protected def addRepositories(request: AetherDescriptorRequest): AetherDescriptorRequest = request
   protected def addRepositories(request: AetherArtifactRequest): AetherArtifactRequest = request
   protected def addRepositories(request: AetherVersionRequest): AetherVersionRequest = request
-  protected def addRepositories(request: AetherVersionRangeRequest): AetherVersionRangeRequest = request
+  protected def addRepositories(request: AetherVersionRangeRequest): AetherVersionRangeRequest =
+    request
   protected def publishArtifacts(artifacts: Seq[AetherArtifact]): Unit = {
     val request = new AetherInstallRequest()
     artifacts foreach request.addArtifact
@@ -42,9 +49,14 @@ class MavenCacheRepositoryResolver(val repo: MavenCache, settings: IvySettings)
         mrid.getName,
         mrid.getRevision,
         MavenRepositoryResolver.MAVEN_METADATA_XML,
-        Metadata.Nature.RELEASE_OR_SNAPSHOT))
+        Metadata.Nature.RELEASE_OR_SNAPSHOT
+      )
+    )
     val metadataResultOpt =
-      try system.resolveMetadata(session, java.util.Arrays.asList(metadataRequest)).asScala.headOption
+      try system
+        .resolveMetadata(session, java.util.Arrays.asList(metadataRequest))
+        .asScala
+        .headOption
       catch {
         case e: org.eclipse.aether.resolution.ArtifactResolutionException => None
       }

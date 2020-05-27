@@ -15,9 +15,12 @@ lazy val plugin = project
     crossSbtVersions := List("1.3.0"),
     scalacOptions ++= Seq("-encoding", "UTF-8", "-unchecked", "-deprecation", "-feature"),
     javacOptions ++= Seq("-encoding", "UTF-8"),
-    scriptedLaunchOpts := {scriptedLaunchOpts.value ++ Seq("-Xmx1024M", "-Dplugin.version=" + version.value)},
+    scriptedLaunchOpts := {
+      scriptedLaunchOpts.value ++ Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
+    },
     scriptedBufferLog := false,
     // don't do any API docs
     doc / sources := Seq(),
     packageDoc / publishArtifact := false
-  ).enablePlugins(SbtPlugin)
+  )
+  .enablePlugins(SbtPlugin)

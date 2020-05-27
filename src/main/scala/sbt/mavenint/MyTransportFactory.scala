@@ -6,7 +6,10 @@ import org.eclipse.aether.spi.connector.transport.{ Transporter, TransporterFact
 
 /** Override aether's default transport with Ivy-ones. */
 class MyTransportFactory extends TransporterFactory {
-  override def newInstance(session: RepositorySystemSession, repository: RemoteRepository): Transporter =
+  override def newInstance(
+      session: RepositorySystemSession,
+      repository: RemoteRepository
+  ): Transporter =
     repository.getProtocol match {
       case "http" | "https" => new HttpTransport(repository)
       case "file"           => new FileTransport(repository)
