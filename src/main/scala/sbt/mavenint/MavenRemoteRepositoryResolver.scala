@@ -9,7 +9,6 @@ import org.eclipse.aether.deployment.{ DeployRequest => AetherDeployRequest }
 import org.eclipse.aether.metadata.{ DefaultMetadata, Metadata }
 import org.eclipse.aether.resolution.{
   ArtifactDescriptorRequest => AetherDescriptorRequest,
-  ArtifactDescriptorResult => AetherDescriptorResult,
   ArtifactRequest => AetherArtifactRequest,
   MetadataRequest => AetherMetadataRequest,
   VersionRequest => AetherVersionRequest,
@@ -17,7 +16,6 @@ import org.eclipse.aether.resolution.{
 }
 
 import sbt.internal.librarymanagement.ivyint.CustomRemoteMavenResolver
-import sbt.librarymanagement.MavenRepository
 
 import scala.collection.JavaConverters._
 
@@ -75,7 +73,7 @@ class MavenRemoteRepositoryResolver(val repo: MavenRepository, settings: IvySett
       catch {
         case e: org.eclipse.aether.resolution.ArtifactResolutionException => None
       }
-    try metadataResultOpt match {
+    metadataResultOpt match {
       case Some(md) if md.isResolved =>
         import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Reader
         import org.codehaus.plexus.util.ReaderFactory
