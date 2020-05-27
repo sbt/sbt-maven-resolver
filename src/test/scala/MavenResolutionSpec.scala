@@ -53,7 +53,7 @@ class MavenResolutionSpec extends BaseIvySpecification {
         PomExtraDependencyAttributes.SbtVersionKey -> "0.13",
         PomExtraDependencyAttributes.ScalaVersionKey -> "2.10"
       )
-      .withCrossVersion(CrossVersion.Disabled)
+      .withCrossVersion(CrossVersion.disabled)
   def oldSbtPlugin =
     ModuleID("com.github.mpeltonen", "sbt-idea", "1.6.0")
       .withConfigurations(Some("compile"))
@@ -61,7 +61,7 @@ class MavenResolutionSpec extends BaseIvySpecification {
         PomExtraDependencyAttributes.SbtVersionKey -> "0.12",
         PomExtraDependencyAttributes.ScalaVersionKey -> "2.9.2"
       )
-      .withCrossVersion(CrossVersion.Disabled)
+      .withCrossVersion(CrossVersion.disabled)
   def majorConflictLib =
     ModuleID("com.joestelmach", "natty", "0.3").withConfigurations(Some("compile"))
   // TODO - This snapshot and resolver should be something we own/control so it doesn't disappear on us.
