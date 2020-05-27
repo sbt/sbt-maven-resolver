@@ -1,31 +1,316 @@
 package testpkg
 
-import java.io.FileInputStream
-
 import sbt.internal.librarymanagement.BaseIvySpecification
 import sbt.internal.librarymanagement.mavenint.PomExtraDependencyAttributes
 import sbt.librarymanagement._
+import Configurations.{ Compile, ScalaTool, Test }
 import sbt.librarymanagement.ivy._
 import sbt.MavenResolverConverter
+import verify._
 
-import sbt.util.ShowLines
+object MavenResolutionSpec extends BasicTestSuite with BaseIvySpecification {
 
-class MavenResolutionSpec extends BaseIvySpecification {
+  test("the maven resolution should handle sbt plugins") {
+    def sha(f: java.io.File): String = sbt.io.Hash.toHex(sbt.io.Hash(f))
+    def findSbtIdeaJars(dep: ModuleID, name: String) = {
+      val m = module(
+        ModuleID("com.example", name, "0.1.0").withConfigurations(Some("compile")),
+        Vector(dep),
+        None,
+        defaultUpdateOptions
+      )
+      val report = ivyUpdate(m)
+      for {
+        conf <- report.configurations if conf.configuration == ConfigRef(Compile.name)
+        m <- conf.modules
+        if (m.module.name contains "sbt-idea")
+        (a, f) <- m.artifacts
+        if a.extension == "jar"
+      } yield (f, sha(f))
+    }
 
-  "the maven resolution" should "handle sbt plugins" in resolveSbtPlugins
+    val oldJars = findSbtIdeaJars(oldSbtPlugin, "old")
+    System.err.println(s"${oldJars.mkString("\n")}")
+    val newJars = findSbtIdeaJars(sbtPlugin, "new")
+    System.err.println(s"${newJars.mkString("\n")}")
 
-  it should "use ivy for conflict resolution" in resolveMajorConflicts
-  it should "handle cross configuration deps" in resolveCrossConfigurations
-  it should "publish with maven-metadata" in publishMavenMetadata
-  it should "resolve transitive maven dependencies" in resolveTransitiveMavenDependency
-  it should "resolve intransitive maven dependencies" in resolveIntransitiveMavenDependency
-  it should "handle transitive configuration shifts" in resolveTransitiveConfigurationMavenDependency
-  it should "resolve source and doc" in resolveSourceAndJavadoc
-  it should "resolve nonstandard (jdk5) classifier" in resolveNonstandardClassifier
-  it should "Resolve pom artifact dependencies" in resolvePomArtifactAndDependencies
-  it should "Fail if JAR artifact is not found w/ POM" in failIfMainArtifactMissing
-  it should "Fail if POM.xml is not found" in failIfPomMissing
-  it should "resolve publication date for -SNAPSHOT" in resolveSnapshotPubDate
+    assert(newJars.size == 1)
+    assert(oldJars.size == 1)
+    assert(oldJars.map(_._2) != newJars.map(_._2))
+  }
+
+  test("use ivy for conflict resolution") {
+    val m = module(
+      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
+      Vector(majorConflictLib),
+      None,
+      defaultUpdateOptions
+    )
+    val report = ivyUpdate(m) // should not(throwAn[IllegalStateException])
+    val jars =
+      for {
+        conf <- report.configurations
+        if conf.configuration == ConfigRef(Compile.name)
+        m <- conf.modules
+        if (m.module.name contains "stringtemplate")
+        (a, f) <- m.artifacts
+        if a.extension == "jar"
+      } yield f
+    assert(jars.size == 1)
+  }
+
+  test("handle cross configuration deps") {
+    val m = module(
+      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
+      Vector(scalaCompiler, scalaContinuationPlugin),
+      None,
+      defaultUpdateOptions
+    )
+    val report = ivyUpdate(m)
+    val jars =
+      for {
+        conf <- report.configurations
+        if conf.configuration == ConfigRef(ScalaTool.name)
+        m <- conf.modules
+        if (m.module.name contains "scala-compiler")
+        (a, f) <- m.artifacts
+        if a.extension == "jar"
+      } yield f
+    assert(jars.size == 1)
+  }
+
+  test("publish with maven-metadata") {
+    val m = module(
+      ModuleID("com.example", "test-it", "1.0-SNAPSHOT").withConfigurations(Some("compile")),
+      Vector(),
+      None,
+      defaultUpdateOptions.withLatestSnapshots(true)
+    )
+    sbt.io.IO.withTemporaryDirectory { dir =>
+      val pomFile = new java.io.File(dir, "pom.xml")
+      sbt.io.IO.write(
+        pomFile,
+        """
+          |<project>
+          |   <groupId>com.example</groupId>
+          |   <name>test-it</name>
+          |   <version>1.0-SNAPSHOT</version>
+          |</project>
+        """.stripMargin
+      )
+      val jarFile = new java.io.File(dir, "test-it-1.0-SNAPSHOT.jar")
+      sbt.io.IO.touch(jarFile)
+      System.err.println(s"DEBUGME - Publishing $m to ${Resolver.publishMavenLocal}")
+      ivyPublish(
+        m,
+        mkPublishConfiguration(
+          Resolver.publishMavenLocal,
+          Map(
+            Artifact("test-it-1.0-SNAPSHOT.jar") -> pomFile,
+            Artifact("test-it-1.0-SNAPSHOT.pom", "pom", "pom") -> jarFile
+          )
+        )
+      )
+    }
+    val baseLocalMavenDir: java.io.File = Resolver.publishMavenLocal.rootFile
+    val allFiles: Seq[java.io.File] =
+      sbt.io.PathFinder(new java.io.File(baseLocalMavenDir, "com/example/test-it")).allPaths.get
+    val metadataFiles = allFiles.filter(_.getName contains "maven-metadata-local")
+    // TODO - maybe we check INSIDE the metadata, or make sure we can get a publication date on resolve...
+    // We end up with 4 files, two mavne-metadata files, and 2 maven-metadata-local files.
+    assert(metadataFiles.size == 2)
+  }
+
+  test("resolve transitive maven dependencies") {
+    val m = module(
+      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
+      Vector(akkaActor),
+      Some("2.10.2"),
+      defaultUpdateOptions
+    )
+    val report = ivyUpdate(m)
+    val jars =
+      for {
+        conf <- report.configurations
+        if conf.configuration == ConfigRef(Compile.name)
+        m <- conf.modules
+        if m.module.name == "scala-library"
+        (a, f) <- m.artifacts
+        if a.extension == "jar"
+      } yield f
+
+    assert(report.configurations.size == configurations.size)
+    assert(jars.nonEmpty)
+    assert(jars.forall(_.exists))
+  }
+
+  test("resolve intransitive maven dependencies") {
+    val m = module(
+      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
+      Vector(akkaActorTestkit.intransitive()),
+      Some("2.10.2"),
+      defaultUpdateOptions
+    )
+    val report = ivyUpdate(m)
+    val transitiveJars =
+      for {
+        conf <- report.configurations
+        if conf.configuration == ConfigRef(Compile.name)
+        m <- conf.modules
+        if (m.module.name contains "akka-actor") && !(m.module.name contains "testkit")
+        (a, f) <- m.artifacts
+        if a.extension == "jar"
+      } yield f
+    val directJars =
+      for {
+        conf <- report.configurations
+        if conf.configuration == ConfigRef(Compile.name)
+        m <- conf.modules
+        if (m.module.name contains "akka-actor") && (m.module.name contains "testkit")
+        (a, f) <- m.artifacts
+        if a.extension == "jar"
+      } yield f
+
+    assert(report.configurations.size == configurations.size)
+    assert(transitiveJars.isEmpty)
+    assert(directJars.forall(_.exists))
+  }
+
+  test("handle transitive configuration shifts") {
+    val m = module(
+      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
+      Vector(akkaActorTestkit),
+      Some("2.10.2"),
+      defaultUpdateOptions
+    )
+    val report = ivyUpdate(m)
+    val jars =
+      for {
+        conf <- report.configurations
+        if conf.configuration == ConfigRef(Test.name)
+        m <- conf.modules
+        if m.module.name contains "akka-actor"
+        (a, f) <- m.artifacts
+        if a.extension == "jar"
+      } yield f
+
+    assert(report.configurations.size == configurations.size)
+    assert(jars.nonEmpty)
+    assert(jars.forall(_.exists))
+  }
+
+  test("resolve source and doc") {
+    val m = module(
+      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("sources")),
+      Vector(
+        akkaActor
+          .artifacts(Artifact(akkaActor.name, "javadoc"), Artifact(akkaActor.name, "sources"))
+      ),
+      Some("2.10.2"),
+      defaultUpdateOptions
+    )
+    val report = ivyUpdate(m)
+    val jars =
+      for {
+        conf <- report.configurations
+        //  We actually injected javadoc/sources into the compile scope, due to how we did the request.
+        //  SO, we report that here.
+        if conf.configuration == ConfigRef(Compile.name)
+        m <- conf.modules
+        (a, f) <- m.artifacts
+        if (f.getName contains "sources") || (f.getName contains "javadoc")
+      } yield f
+
+    assert(report.configurations.size == configurations.size)
+    assert(jars.size == 2)
+  }
+
+  test("resolve nonstandard (jdk5) classifier") {
+    val m = module(
+      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
+      Vector(testngJdk5),
+      Some("2.10.2"),
+      defaultUpdateOptions
+    )
+    val report = ivyUpdate(m)
+    val jars =
+      for {
+        conf <- report.configurations
+        if conf.configuration == ConfigRef(Compile.name)
+        m <- conf.modules
+        if m.module.name == "testng"
+        (a, f) <- m.artifacts
+        if a.extension == "jar"
+      } yield f
+
+    assert(report.configurations.size == configurations.size)
+    assert(jars.size == 1)
+    assert(jars.forall(_.exists))
+  }
+
+  test("Resolve pom artifact dependencies") {
+    val m = module(
+      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
+      Vector(scalaLibraryAll),
+      Some("2.10.2"),
+      defaultUpdateOptions
+    )
+    val report = ivyUpdate(m)
+    val jars =
+      for {
+        conf <- report.configurations
+        if conf.configuration == ConfigRef(Compile.name)
+        m <- conf.modules
+        if (m.module.name == "scala-library") || (m.module.name contains "parser")
+        (a, f) <- m.artifacts
+        if a.extension == "jar"
+      } yield f
+
+    assert(jars.size == 2)
+  }
+
+  test("Fail if JAR artifact is not found w/ POM") {
+    val m = module(
+      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
+      Vector(jmxri),
+      Some("2.10.2"),
+      defaultUpdateOptions
+    )
+    intercept[Exception] { ivyUpdate(m) }
+  }
+
+  test("Fail if POM.xml is not found") {
+    // TODO - we need the jar to not exist too.
+    val m = module(
+      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
+      Vector(
+        ModuleID("org.scala-sbt", "does-not-exist", "1.0").withConfigurations(Some("compile"))
+      ),
+      Some("2.10.2"),
+      defaultUpdateOptions
+    )
+    intercept[Exception] { ivyUpdate(m) }
+  }
+
+  test("resolve publication date for -SNAPSHOT") {
+    val m = module(
+      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
+      Vector(testSnapshot),
+      Some("2.10.2"),
+      defaultUpdateOptions.withLatestSnapshots(true)
+    )
+    val report = ivyUpdate(m)
+    val pubTime =
+      for {
+        conf <- report.configurations
+        if conf.configuration == ConfigRef(Compile.name)
+        m <- conf.modules
+        if m.module.revision endsWith "-SNAPSHOT"
+        date <- m.publicationDate
+      } yield date
+
+    assert(pubTime.size == 1)
+  }
 
   // TODO - test latest.integration and .+
 
@@ -74,308 +359,5 @@ class MavenResolutionSpec extends BaseIvySpecification {
     Vector(Resolver.DefaultMavenRepository, SnapshotResolver, Resolver.publishMavenLocal)
   import Configurations.{ Compile, Test, Runtime, CompilerPlugin, ScalaTool }
   override def configurations = Vector(Compile, Test, Runtime, CompilerPlugin, ScalaTool)
-
-  import ShowLines._
-
   def defaultUpdateOptions = UpdateOptions().withResolverConverter(MavenResolverConverter.converter)
-
-  def resolveMajorConflicts = {
-    val m = module(
-      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
-      Vector(majorConflictLib),
-      None,
-      defaultUpdateOptions
-    )
-    val report = ivyUpdate(m) // should not(throwAn[IllegalStateException])
-    val jars =
-      for {
-        conf <- report.configurations
-        if conf.configuration == Compile.name
-        m <- conf.modules
-        if (m.module.name contains "stringtemplate")
-        (a, f) <- m.artifacts
-        if a.extension == "jar"
-      } yield f
-    jars should have size 1
-  }
-
-  def resolveCrossConfigurations = {
-    val m = module(
-      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
-      Vector(scalaCompiler, scalaContinuationPlugin),
-      None,
-      defaultUpdateOptions
-    )
-    val report = ivyUpdate(m)
-    val jars =
-      for {
-        conf <- report.configurations
-        if conf.configuration == ScalaTool.name
-        m <- conf.modules
-        if (m.module.name contains "scala-compiler")
-        (a, f) <- m.artifacts
-        if a.extension == "jar"
-      } yield f
-    jars should have size 1
-  }
-
-  def resolveSbtPlugins = {
-
-    def sha(f: java.io.File): String = sbt.io.Hash.toHex(sbt.io.Hash(f))
-    def findSbtIdeaJars(dep: ModuleID, name: String) = {
-      val m = module(
-        ModuleID("com.example", name, "0.1.0").withConfigurations(Some("compile")),
-        Vector(dep),
-        None,
-        defaultUpdateOptions
-      )
-      val report = ivyUpdate(m)
-      for {
-        conf <- report.configurations
-        if conf.configuration == "compile"
-        m <- conf.modules
-        if (m.module.name contains "sbt-idea")
-        (a, f) <- m.artifacts
-        if a.extension == "jar"
-      } yield (f, sha(f))
-    }
-
-    val oldJars = findSbtIdeaJars(oldSbtPlugin, "old")
-    System.err.println(s"${oldJars.mkString("\n")}")
-    val newJars = findSbtIdeaJars(sbtPlugin, "new")
-    System.err.println(s"${newJars.mkString("\n")}")
-    (newJars should have size 1)
-    (oldJars should have size 1)
-    (oldJars.map(_._2) should not(contain theSameElementsAs (newJars.map(_._2))))
-  }
-
-  def resolveSnapshotPubDate = {
-    val m = module(
-      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
-      Vector(testSnapshot),
-      Some("2.10.2"),
-      defaultUpdateOptions.withLatestSnapshots(true)
-    )
-    val report = ivyUpdate(m)
-    val pubTime =
-      for {
-        conf <- report.configurations
-        if conf.configuration == "compile"
-        m <- conf.modules
-        if m.module.revision endsWith "-SNAPSHOT"
-        date <- m.publicationDate
-      } yield date
-    (pubTime should have size 1)
-  }
-
-  def resolvePomArtifactAndDependencies = {
-    val m = module(
-      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
-      Vector(scalaLibraryAll),
-      Some("2.10.2"),
-      defaultUpdateOptions
-    )
-    val report = ivyUpdate(m)
-    val jars =
-      for {
-        conf <- report.configurations
-        if conf.configuration == "compile"
-        m <- conf.modules
-        if (m.module.name == "scala-library") || (m.module.name contains "parser")
-        (a, f) <- m.artifacts
-        if a.extension == "jar"
-      } yield f
-    jars should have size 2
-  }
-
-  def failIfPomMissing = {
-    // TODO - we need the jar to not exist too.
-    val m = module(
-      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
-      Vector(
-        ModuleID("org.scala-sbt", "does-not-exist", "1.0").withConfigurations(Some("compile"))
-      ),
-      Some("2.10.2"),
-      defaultUpdateOptions
-    )
-    an[Exception] should be thrownBy ivyUpdate(m)
-  }
-
-  def failIfMainArtifactMissing = {
-    val m = module(
-      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
-      Vector(jmxri),
-      Some("2.10.2"),
-      defaultUpdateOptions
-    )
-    an[Exception] should be thrownBy ivyUpdate(m)
-  }
-
-  def resolveNonstandardClassifier = {
-    val m = module(
-      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
-      Vector(testngJdk5),
-      Some("2.10.2"),
-      defaultUpdateOptions
-    )
-    val report = ivyUpdate(m)
-    val jars =
-      for {
-        conf <- report.configurations
-        if conf.configuration == "compile"
-        m <- conf.modules
-        if m.module.name == "testng"
-        (a, f) <- m.artifacts
-        if a.extension == "jar"
-      } yield f
-    (report.configurations should have size configurations.size)
-    (jars should have size 1)
-    (jars.forall(_.exists) shouldBe true)
-
-  }
-
-  def resolveTransitiveMavenDependency = {
-    val m = module(
-      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
-      Vector(akkaActor),
-      Some("2.10.2"),
-      defaultUpdateOptions
-    )
-    val report = ivyUpdate(m)
-    val jars =
-      for {
-        conf <- report.configurations
-        if conf.configuration == "compile"
-        m <- conf.modules
-        if m.module.name == "scala-library"
-        (a, f) <- m.artifacts
-        if a.extension == "jar"
-      } yield f
-    (report.configurations should have size configurations.size)
-    (jars should not be empty)
-    (jars.forall(_.exists) shouldBe true)
-
-  }
-
-  def resolveIntransitiveMavenDependency = {
-    val m = module(
-      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
-      Vector(akkaActorTestkit.intransitive()),
-      Some("2.10.2"),
-      defaultUpdateOptions
-    )
-    val report = ivyUpdate(m)
-    val transitiveJars =
-      for {
-        conf <- report.configurations
-        if conf.configuration == "compile"
-        m <- conf.modules
-        if (m.module.name contains "akka-actor") && !(m.module.name contains "testkit")
-        (a, f) <- m.artifacts
-        if a.extension == "jar"
-      } yield f
-    val directJars =
-      for {
-        conf <- report.configurations
-        if conf.configuration == "compile"
-        m <- conf.modules
-        if (m.module.name contains "akka-actor") && (m.module.name contains "testkit")
-        (a, f) <- m.artifacts
-        if a.extension == "jar"
-      } yield f
-    (report.configurations should have size configurations.size)
-    (transitiveJars shouldBe empty)
-    (directJars.forall(_.exists) shouldBe true)
-  }
-
-  def resolveTransitiveConfigurationMavenDependency = {
-    val m = module(
-      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
-      Vector(akkaActorTestkit),
-      Some("2.10.2"),
-      defaultUpdateOptions
-    )
-    val report = ivyUpdate(m)
-    val jars =
-      for {
-        conf <- report.configurations
-        if conf.configuration == "test"
-        m <- conf.modules
-        if m.module.name contains "akka-actor"
-        (a, f) <- m.artifacts
-        if a.extension == "jar"
-      } yield f
-    (report.configurations should have size configurations.size)
-    (jars should not be empty)
-    (jars.forall(_.exists) shouldBe true)
-
-  }
-
-  def resolveSourceAndJavadoc = {
-    val m = module(
-      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("sources")),
-      Vector(
-        akkaActor
-          .artifacts(Artifact(akkaActor.name, "javadoc"), Artifact(akkaActor.name, "sources"))
-      ),
-      Some("2.10.2"),
-      defaultUpdateOptions
-    )
-    val report = ivyUpdate(m)
-    val jars =
-      for {
-        conf <- report.configurations
-        //  We actually injected javadoc/sources into the compile scope, due to how we did the request.
-        //  SO, we report that here.
-        if conf.configuration == "compile"
-        m <- conf.modules
-        (a, f) <- m.artifacts
-        if (f.getName contains "sources") || (f.getName contains "javadoc")
-      } yield f
-    (report.configurations should have size configurations.size)
-    (jars should have size 2)
-  }
-
-  def publishMavenMetadata = {
-    val m = module(
-      ModuleID("com.example", "test-it", "1.0-SNAPSHOT").withConfigurations(Some("compile")),
-      Vector(),
-      None,
-      defaultUpdateOptions.withLatestSnapshots(true)
-    )
-    sbt.io.IO.withTemporaryDirectory { dir =>
-      val pomFile = new java.io.File(dir, "pom.xml")
-      sbt.io.IO.write(
-        pomFile,
-        """
-          |<project>
-          |   <groupId>com.example</groupId>
-          |   <name>test-it</name>
-          |   <version>1.0-SNAPSHOT</version>
-          |</project>
-        """.stripMargin
-      )
-      val jarFile = new java.io.File(dir, "test-it-1.0-SNAPSHOT.jar")
-      sbt.io.IO.touch(jarFile)
-      System.err.println(s"DEBUGME - Publishing $m to ${Resolver.publishMavenLocal}")
-      ivyPublish(
-        m,
-        mkPublishConfiguration(
-          Resolver.publishMavenLocal,
-          Map(
-            Artifact("test-it-1.0-SNAPSHOT.jar") -> pomFile,
-            Artifact("test-it-1.0-SNAPSHOT.pom", "pom", "pom") -> jarFile
-          )
-        )
-      )
-    }
-    val baseLocalMavenDir: java.io.File = Resolver.publishMavenLocal.rootFile
-    val allFiles: Seq[java.io.File] =
-      sbt.io.PathFinder(new java.io.File(baseLocalMavenDir, "com/example/test-it")).allPaths.get
-    val metadataFiles = allFiles.filter(_.getName contains "maven-metadata-local")
-    // TODO - maybe we check INSIDE the metadata, or make sure we can get a publication date on resolve...
-    // We end up with 4 files, two mavne-metadata files, and 2 maven-metadata-local files.
-    metadataFiles should have size 2
-  }
-
 }

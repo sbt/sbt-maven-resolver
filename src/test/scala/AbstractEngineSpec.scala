@@ -2,7 +2,7 @@ package testpkg
 
 import sbt.librarymanagement._
 
-abstract class AbstractEngineSpec extends UnitSpec {
+trait AbstractEngineSpec {
   def cleanCache(): Unit
 
   def module(
