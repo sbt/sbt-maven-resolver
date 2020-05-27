@@ -1,10 +1,11 @@
 import Dependencies._
 
+ThisBuild / version := "0.1.0-SNAPSHOT"
+
 lazy val plugin = project
   .in(file("."))
   .enablePlugins(SbtPlugin)
   .settings(
-    version := "0.1.0",
     organization := "org.scala-sbt",
     name := "sbt-maven-resolver",
     homepage := Some(url("https://github.com/sbt/sbt-maven-resolver")),
@@ -13,11 +14,14 @@ lazy val plugin = project
     bintrayRepository := "sbt-plugin-releases",
     bintrayOrganization := Some("sbt"),
     crossSbtVersions := List("1.3.0"),
-    scalacOptions ++= Seq("-encoding", "UTF-8", "-unchecked", "-deprecation", "-feature"),
+    scalacOptions ++= Seq("-encoding", "UTF-8", "-unchecked", "-deprecation", "-feature", "-Xlint"),
     javacOptions ++= Seq("-encoding", "UTF-8"),
-    scriptedLaunchOpts := {scriptedLaunchOpts.value ++ Seq("-Xmx1024M", "-Dplugin.version=" + version.value)},
+    scriptedLaunchOpts := {
+      scriptedLaunchOpts.value ++ Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
+    },
     scriptedBufferLog := false,
     // don't do any API docs
     doc / sources := Seq(),
-    packageDoc / publishArtifact := false
-  ).enablePlugins(SbtPlugin)
+    packageDoc / publishArtifact := false,
+    testFrameworks += new TestFramework("verify.runner.Framework"),
+  )

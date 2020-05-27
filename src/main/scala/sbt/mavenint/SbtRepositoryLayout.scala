@@ -16,7 +16,10 @@ import scala.util.matching.Regex
 
 /** A factory which knows how to create repository layouts which can find sbt plugins. */
 class SbtPluginLayoutFactory extends RepositoryLayoutFactory {
-  def newInstance(session: RepositorySystemSession, repository: RemoteRepository): RepositoryLayout = {
+  def newInstance(
+      session: RepositorySystemSession,
+      repository: RemoteRepository
+  ): RepositoryLayout = {
     repository.getContentType match {
       case SbtRepositoryLayout.LAYOUT_NAME =>
         SbtRepositoryLayout
@@ -42,7 +45,14 @@ object SbtRepositoryLayout extends RepositoryLayout {
         if (artifact.getArtifactId contains "_sbt_") {
           val SbtNameVersionSplit(name, sbt2) = artifact.getArtifactId
           path.append(name).append('_').append(scala).append('_').append(sbt).append('/')
-        } else path.append(artifact.getArtifactId).append('_').append(scala).append('_').append(sbt).append('/')
+        } else
+          path
+            .append(artifact.getArtifactId)
+            .append('_')
+            .append(scala)
+            .append('_')
+            .append(sbt)
+            .append('/')
       case None =>
         // TODO - Should we automatically append the _<scala-verison> here if it's not there?  Probably not for now.
         path.append(artifact.getArtifactId).append('/')
@@ -77,7 +87,14 @@ object SbtRepositoryLayout extends RepositoryLayout {
         if (metadata.getArtifactId contains "_sbt_") {
           val SbtNameVersionSplit(name, sbt2) = metadata.getArtifactId
           path.append(name).append('_').append(scala).append('_').append(sbt).append('/')
-        } else path.append(metadata.getArtifactId).append('_').append(scala).append('_').append(sbt).append('/')
+        } else
+          path
+            .append(metadata.getArtifactId)
+            .append('_')
+            .append(scala)
+            .append('_')
+            .append(sbt)
+            .append('/')
       case None =>
         // TODO - Should we automatically append the _<scala-verison> here?  Proabbly not for now.
         path.append(metadata.getArtifactId).append('/')
@@ -95,5 +112,6 @@ object SbtRepositoryLayout extends RepositoryLayout {
     getChecksums(location)
 
   private def getChecksums(location: URI): java.util.List[Checksum] =
-    java.util.Arrays.asList(Checksum.forLocation(location, "SHA-1"), Checksum.forLocation(location, "MD5"))
+    java.util.Arrays
+      .asList(Checksum.forLocation(location, "SHA-1"), Checksum.forLocation(location, "MD5"))
 }
