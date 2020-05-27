@@ -382,7 +382,7 @@ abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractRe
           case other          => other
         }
         // Here we add the classifier, hopefully correctly...
-        val extraAtt = new java.util.HashMap[String, AnyRef]()
+        val extraAtt = new java.util.HashMap[String, String]()
         if (d.getArtifact.getClassifier != null) {
           extraAtt.put("m:classifier", d.getArtifact.getClassifier)
         }

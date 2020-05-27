@@ -1,45 +1,40 @@
 import sbt._
-import Keys._
+import sbt.Keys._
 
 object Dependencies {
-  val utilVersion = "0.1.0-M8"
-  val librarymanagementVersion = "0.1.0-M7"
-  lazy val utilTesting = "org.scala-sbt" %% "util-testing" % utilVersion
-  lazy val libraryManagement = "org.scala-sbt" %% "librarymanagement" % librarymanagementVersion
+  resolvers += "bintray-sbt-maven-releases" at "https://dl.bintray.com/sbt/maven-releases/"
 
-  // Maven related dependnecy craziness
-  //val mvnEmbedder = "org.apache.maven" % "maven-embedder" % mvnVersion
-  val mvnWagonVersion = "2.4"
-  val mvnVersion = "3.2.3"
-  val aetherVersion = "1.0.1.v20141111"
+  val libraryManagementVersion = "1.3.2"
 
-  val mvnAether = "org.apache.maven" % "maven-aether-provider" % mvnVersion
-  val aether = "org.eclipse.aether" % "aether" % aetherVersion
-  val aetherImpl = "org.eclipse.aether" % "aether-impl" % aetherVersion
-  val aetherUtil = "org.eclipse.aether" % "aether-util" % aetherVersion
-  val aetherTransportFile = "org.eclipse.aether" % "aether-transport-file" % aetherVersion
-  val aetherTransportWagon = "org.eclipse.aether" % "aether-transport-wagon" % aetherVersion
-  val aetherTransportHttp = "org.eclipse.aether" % "aether-transport-http" % aetherVersion
-  val aetherConnectorBasic = "org.eclipse.aether" % "aether-connector-basic" % aetherVersion
-  val sisuPlexus = ("org.eclipse.sisu" % "org.eclipse.sisu.plexus" % "0.3.0.M1").exclude("javax.enterprise", "cdi-api").exclude("com.google.code.findbugs", "jsr305")
-  val guice = "com.google.inject" % "guice" % "3.0"
-  val guava = "com.google.guava" % "guava" % "18.0"
-  val javaxInject = "javax.inject" % "javax.inject" % "1"
+  lazy val depsTest: Seq[ModuleID] = Seq(
+    "org.scalatest" %% "scalatest" % "3.0.8" % "test",
+    "org.scala-sbt" %% "util-testing" % "1.1.3"
+  )
 
-  //val sisuGuice = ("org.eclipse.sisu" % "sisu-guice" % "3.1.0").classifier("no_aop").exclude("javax.enterprise", "cdi-api", )
+  val mvnVersion = "3.3.9"
+  val aetherVersion = "1.1.0"
 
-  /*
-  val mvnWagon = "org.apache.maven.wagon" % "wagon-http" % mvnWagonVersion
-  val mvnWagonProviderApi = "org.apache.maven.wagon" % "wagon-provider-api" % mvnWagonVersion
-  val mvnWagonLwHttp = "org.apache.maven.wagon" % "wagon-http-lightweight" % mvnWagonVersion
-  val mvnWagonFile = "org.apache.maven.wagon" % "wagon-file" % mvnWagonVersion
-  */
-  def aetherLibs =
-    Seq(
-      guava,
-      javaxInject,
-      sisuPlexus,
-      aetherImpl,
-      aetherConnectorBasic,
-      mvnAether)
+  lazy val deps: Seq[ModuleID] = Seq(
+    "org.scala-sbt" %% "librarymanagement-core" % libraryManagementVersion,
+    "org.scala-sbt" %% "librarymanagement-ivy" % libraryManagementVersion,
+
+    "org.apache.maven" % "maven-aether-provider" % mvnVersion,
+    "org.eclipse.aether" % "aether" % aetherVersion,
+    "org.eclipse.aether" % "aether-impl" % aetherVersion,
+    "org.eclipse.aether" % "aether-util" % aetherVersion,
+    "org.eclipse.aether" % "aether-transport-file" % aetherVersion,
+    "org.eclipse.aether" % "aether-transport-wagon" % aetherVersion,
+    "org.eclipse.aether" % "aether-transport-http" % aetherVersion,
+    "org.eclipse.aether" % "aether-connector-basic" % aetherVersion,
+
+    "org.eclipse.sisu" % "org.eclipse.sisu.plexus" % "0.3.4" excludeAll(
+      ExclusionRule("javax.enterprise", "cdi-api"),
+      ExclusionRule("com.google.code.findbugs", "jsr305")
+    ),
+    "com.google.inject" % "guice" % "4.2.3",
+    "com.google.guava" % "guava" % "19.0",
+    "javax.inject" % "javax.inject" % "1",
+    "org.apache.ivy" % "ivy" % "2.5.0",
+    "org.scala-sbt" %% "io" % "1.4.0-M6"
+  )
 }

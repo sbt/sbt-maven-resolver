@@ -2,18 +2,15 @@ package sbt.mavenint
 
 import java.io.File
 
-import org.apache.ivy.plugins.repository.Resource
-import org.apache.ivy.plugins.repository.url.URLResource
 import org.apache.ivy.util.Message
-import org.apache.ivy.util.url.URLHandlerRegistry
-import org.apache.maven.repository.internal.{ MavenRepositorySystemUtils, SbtArtifactDescriptorReader, SnapshotMetadataGeneratorFactory, VersionsMetadataGeneratorFactory, DefaultVersionResolver }
-import org.eclipse.aether.{ RepositorySystem, RepositorySystemSession }
+import org.apache.maven.repository.internal.{MavenRepositorySystemUtils, SbtArtifactDescriptorReader, SnapshotMetadataGeneratorFactory, VersionsMetadataGeneratorFactory}
 import org.eclipse.aether.connector.basic.BasicRepositoryConnectorFactory
-import org.eclipse.aether.impl.{ ArtifactDescriptorReader, DefaultServiceLocator, MetadataGeneratorFactory, VersionResolver }
-import org.eclipse.aether.repository.{ LocalRepository, RemoteRepository }
+import org.eclipse.aether.impl.{ArtifactDescriptorReader, DefaultServiceLocator, MetadataGeneratorFactory}
+import org.eclipse.aether.repository.LocalRepository
 import org.eclipse.aether.spi.connector.RepositoryConnectorFactory
 import org.eclipse.aether.spi.connector.layout.RepositoryLayoutFactory
-import org.eclipse.aether.spi.connector.transport.{ TransporterFactory, _ }
+import org.eclipse.aether.spi.connector.transport.TransporterFactory
+import org.eclipse.aether.{RepositorySystem, RepositorySystemSession}
 
 /** Helper methods for dealing with starting up Aether. */
 object MavenRepositorySystemFactory {
@@ -45,7 +42,7 @@ object MavenRepositorySystemFactory {
   def newSessionImpl(system: RepositorySystem, localRepoDir: File): RepositorySystemSession = {
     val session = MavenRepositorySystemUtils.newSession()
     val localRepo = new LocalRepository(localRepoDir)
-    session setLocalRepositoryManager (system.newLocalRepositoryManager(session, localRepo))
+    session setLocalRepositoryManager system.newLocalRepositoryManager(session, localRepo)
     // Here we set a descriptor policy that FORCES the pom.xml to exist, otherwise Ivy's resolution
     // algorithm freaks out.   What we could do is also do the ivy lame-thing of checking for a JAR
     // instead of a pom.xml, but let's see if this is actually a problem in practice.
