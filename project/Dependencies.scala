@@ -7,8 +7,8 @@ object Dependencies {
   val libraryManagementVersion = "1.3.2"
 
   lazy val depsTest: Seq[ModuleID] = Seq(
-    "org.scalatest" %% "scalatest" % "3.0.8" % "test",
-    "org.scala-sbt" %% "util-testing" % "1.1.3"
+    "org.scalatest" %% "scalatest" % "3.0.8" % Test,
+    "org.scala-sbt" %% "util-testing" % "1.1.3" % Test,
   )
 
   val mvnVersion = "3.3.9"
