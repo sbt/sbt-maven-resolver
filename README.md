@@ -21,6 +21,10 @@ In `plugins.sbt`:
 addSbtPlugin("org.scala-sbt" % "sbt-maven-resolver" % "0.1.0")
 ```
 
+### Credits
+
+- In 2015, Josh Suereth implemented sbt-maven-resolver as part of sbt 0.13.8 in [sbt/sbt#1793](https://github.com/sbt/sbt/pull/1793).
+
 ### License
 
 Licensed under Apache v2 license
