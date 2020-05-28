@@ -1,7 +1,9 @@
 sbt-maven-resolver
 ==================
 
-A plugin to resolve dependencies deployed by sbt or maven on a maven-repository. Especially it solves the problem:
+An sbt plugin to resolve dependencies using [Aether](https://wiki.eclipse.org/Aether/What_Is_Aether) (Maven's dependency resolver) together with Apache Ivy.
+
+It solves the problems:
 
 - sbt does not resolve the proper snapshot-version with timestamp dependencies deployed by sbt
 - the host repository's "Maven Snapshot Version Behaviour" is "Unique" (Nonunique will overwrite jar/pom at each time and update all maven-metadata.xml automatically updated once a jar was been deployed)
@@ -13,9 +15,12 @@ related question:
 
 ### Usage
 
-In `plugins.sbt`
-```
+In `plugins.sbt`:
+
+```scala
 addSbtPlugin("org.scala-sbt" % "sbt-maven-resolver" % "0.1.0-SNAPSHOT")
 ```
 
-`addMavenResolverPlugin` does not been supported due to it use `sbtVersion` as the package version
+### License
+
+Licensed under Apache v2 license

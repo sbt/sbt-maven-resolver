@@ -5,7 +5,7 @@ import sbt.internal.librarymanagement.mavenint.PomExtraDependencyAttributes
 import sbt.librarymanagement._
 import Configurations.{ Compile, ScalaTool, Test }
 import sbt.librarymanagement.ivy._
-import sbt.MavenResolverConverter
+import sbtmavenresolver.MavenResolverConverter
 import verify._
 
 object MavenResolutionSpec extends BasicTestSuite with BaseIvySpecification {
