@@ -1,4 +1,5 @@
-package sbt.mavenint
+package sbtmavenresolver
+package mavenint
 
 import java.net.URI
 

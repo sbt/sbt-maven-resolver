@@ -1,4 +1,5 @@
-package sbt.mavenint
+package sbtmavenresolver
+package mavenint
 
 import org.apache.ivy.plugins.repository.Resource
 import org.apache.ivy.plugins.repository.url.URLResource

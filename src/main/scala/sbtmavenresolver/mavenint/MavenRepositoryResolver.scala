@@ -1,4 +1,5 @@
-package sbt.mavenint
+package sbtmavenresolver
+package mavenint
 
 import java.io.File
 import java.util.Date
@@ -25,28 +26,23 @@ import org.apache.ivy.plugins.resolver.AbstractResolver
 import org.apache.ivy.plugins.resolver.util.ResolvedResource
 import org.apache.ivy.util.Message
 import org.eclipse.aether.artifact.{ DefaultArtifact => AetherArtifact }
-import org.eclipse.aether.deployment.{ DeployRequest => AetherDeployRequest }
-import org.eclipse.aether.installation.{ InstallRequest => AetherInstallRequest }
-import org.eclipse.aether.metadata.{ DefaultMetadata, Metadata }
 import org.eclipse.aether.resolution.{
   ArtifactDescriptorRequest => AetherDescriptorRequest,
   ArtifactDescriptorResult => AetherDescriptorResult,
   ArtifactRequest => AetherArtifactRequest,
   ArtifactResolutionException,
-  MetadataRequest => AetherMetadataRequest,
+  // MetadataRequest => AetherMetadataRequest,
   VersionRequest => AetherVersionRequest,
   VersionRangeRequest => AetherVersionRangeRequest
 }
 import org.eclipse.aether.{ RepositorySystem, RepositorySystemSession }
-
-import sbt.internal.librarymanagement.ivyint.{ CustomMavenResolver, CustomRemoteMavenResolver }
 import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
   SbtPomExtraProperties
 }
 import sbt.internal.librarymanagement.MakePom
 
-import sbt.mavenint.MavenRepositoryResolver.JarPackaging
+import mavenint.MavenRepositoryResolver.JarPackaging
 
 import scala.collection.JavaConverters._
 

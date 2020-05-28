@@ -1,6 +1,7 @@
-package sbt
+package sbtmavenresolver
 package mavenint
 
+import sbt._
 import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.ivy.core.settings.IvySettings
 import org.eclipse.aether.artifact.{ DefaultArtifact => AetherArtifact }

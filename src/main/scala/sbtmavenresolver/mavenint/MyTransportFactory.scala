@@ -1,4 +1,5 @@
-package sbt.mavenint
+package sbtmavenresolver
+package mavenint
 
 import org.eclipse.aether.RepositorySystemSession
 import org.eclipse.aether.repository.RemoteRepository
