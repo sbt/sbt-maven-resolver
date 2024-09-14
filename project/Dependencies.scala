@@ -18,7 +18,6 @@ object Dependencies {
     "org.scala-sbt" %% "librarymanagement-core" % libraryManagementVersion,
     "org.scala-sbt" %% "librarymanagement-ivy" % libraryManagementVersion,
     "org.apache.maven" % "maven-aether-provider" % mvnVersion,
-    "org.eclipse.aether" % "aether" % aetherVersion,
     "org.eclipse.aether" % "aether-impl" % aetherVersion,
     "org.eclipse.aether" % "aether-util" % aetherVersion,
     "org.eclipse.aether" % "aether-transport-file" % aetherVersion,
