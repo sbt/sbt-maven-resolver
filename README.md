@@ -18,7 +18,7 @@ related question:
 In `plugins.sbt`:
 
 ```scala
-addSbtPlugin("org.scala-sbt" % "sbt-maven-resolver" % "0.1.0")
+addSbtPlugin("org.scala-sbt" % "sbt-maven-resolver" % "0.1.1")
 ```
 
 ### Credits
